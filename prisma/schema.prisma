@@ -1,0 +1,99 @@
+// KickPay - Step 1: Onboarding profile persistence
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Account created via onboarding (create-account flow). Auth: password + session; API keys per plan.
+model User {
+  id               String   @id @default(cuid())
+  email            String   @unique
+  passwordHash     String
+  phone            String?  // set in onboarding
+  accountType      String   @default("company") // B2B: all accounts are businesses
+  displayName      String?  // business name, set in onboarding
+  countryCode      String?  // ISO 3166-1 alpha-2, set in onboarding
+  accountStatus    String   @default("pending") // pending | verified (live keys when verified)
+  role             String   @default("user") // user | admin | super_admin
+  testSecretHash      String?  // hash of sk_test_* for API auth
+  testSecretPrefix    String?  // e.g. sk_test_... for display
+  testSecretEncrypted String?  // encrypted full key for reveal/copy
+  liveSecretHash      String?
+  liveSecretPrefix    String?
+  liveSecretEncrypted String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  verificationSubmissions VerificationSubmission[]
+  recipients       Recipient[]
+  transfers        Transfer[]
+}
+
+// Recipient in China (or other destination) for NGN→CNY transfers.
+model Recipient {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName      String
+  bankName      String?
+  accountNumber String
+  bankCode      String?  // SWIFT or local bank code
+  currency      String   @default("CNY")
+  countryCode   String   @default("CN") // ISO 3166-1 alpha-2
+  email         String?
+  phone         String?
+  metadata      String?  // JSON for Liang Liang / provider-specific data
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  transfers     Transfer[]
+
+  @@index([userId])
+}
+
+// Transfer: user pays NGN → we convert to GBP (Haystack) → T+1 settlement to recipient in local currency.
+model Transfer {
+  id                   String   @id @default(cuid())
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipientId          String
+  recipient            Recipient @relation(fields: [recipientId], references: [id], onDelete: Restrict)
+  amountNgn            Int      // amount in kobo (e.g. 10000 = 100 NGN)
+  amountGbp            String?  // amount in GBP after FX (decimal as string)
+  fxRate               String?  // NGN/GBP rate used (decimal as string)
+  status               String   @default("pending_payment") // pending_payment | payment_received | pending_settlement | completed | failed
+  paymentReference     String   @unique // our reference for user to pay into (e.g. KP-xxx)
+  paystackReference    String?  // from Paystack when payment is initialized/confirmed
+  paidAt               DateTime?
+  settledAt            DateTime? // T+1 when sent via Liang Liang
+  failureReason        String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([userId])
+  @@index([recipientId])
+  @@index([status])
+  @@index([paymentReference])
+}
+
+// User submits BVN, TIN, CAC doc, and other docs for review. Admin approves → user gets live key.
+model VerificationSubmission {
+  id                 String   @id @default(cuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bvn                String   // Bank Verification Number (e.g. 11 digits Nigeria)
+  tin                String   // Tax Identification Number
+  cacDocumentPath    String   // path to uploaded CAC document
+  additionalPaths    String   @default("[]") // JSON array of other document paths
+  status             String   @default("pending") // pending | approved | rejected
+  rejectionReason    String?  // set when status = rejected
+  submittedAt        DateTime @default(now())
+  reviewedAt        DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
