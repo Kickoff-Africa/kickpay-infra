@@ -5,21 +5,21 @@ import Link from "next/link";
 export function Hero() {
   return (
     <section className="relative min-h-[90vh] flex flex-col items-center justify-center px-4 sm:px-6 overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-b from-[var(--primary)]/8 via-transparent to-transparent pointer-events-none" />
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[var(--primary)]/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-[var(--info)]/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute inset-0 bg-linear-to-b from-(--primary)/8 via-transparent to-transparent pointer-events-none" />
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-(--primary)/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-(--info)/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--border)_1px,transparent_1px),linear-gradient(to_bottom,var(--border)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,black,transparent)] opacity-40 pointer-events-none" />
 
       <div className="relative max-w-4xl mx-auto text-center space-y-8">
-        <p className="text-sm font-medium tracking-wide uppercase text-[var(--primary)]">
+        <p className="text-sm font-medium tracking-wide uppercase text-primary">
           B2B cross-border payments
         </p>
-        <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-[var(--foreground)] tracking-tight leading-[1.1]">
+        <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-foreground tracking-tight leading-[1.1]">
           Pay in Naira.
           <br />
-          <span className="text-[var(--primary)]">Settle in China.</span>
+          <span className="text-primary">Settle in China.</span>
         </h1>
-        <p className="text-lg sm:text-xl text-[var(--muted-foreground)] max-w-2xl mx-auto leading-relaxed">
+        <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
           API-first infrastructure for Nigerian businesses. Collect NGN from your customers, we handle FX and T+1 settlement to recipients in China—and beyond.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
@@ -40,17 +40,17 @@ export function Hero() {
           </a>
         </div>
 
-        <div className="flex items-center justify-center gap-6 pt-8 text-sm text-[var(--muted-foreground)]">
+        <div className="flex items-center justify-center gap-6 pt-8 text-sm text-muted-foreground">
           <span className="flex items-center gap-2">
-            <span className="font-semibold text-[var(--foreground)]">NGN</span>
+            <span className="font-semibold text-foreground">NGN</span>
             <span>→</span>
-            <span className="font-semibold text-[var(--foreground)]">GBP</span>
-            <span>→</span>
-            <span className="font-semibold text-[var(--foreground)]">CNY</span>
+            {/* <span className="font-semibold text-foreground">GBP</span> */}
+            {/* <span>→</span> */}
+            <span className="font-semibold text-foreground">CNY</span>
           </span>
-          <span className="text-[var(--border)]">|</span>
+          <span className="text-border">|</span>
           <span>Test & live keys</span>
-          <span className="text-[var(--border)]">|</span>
+          <span className="text-border">|</span>
           <span>REST API</span>
         </div>
       </div>
