@@ -5,9 +5,7 @@
 
 */
 -- DropTable
-PRAGMA foreign_keys=off;
 DROP TABLE "OnboardingProfile";
-PRAGMA foreign_keys=on;
 
 -- CreateTable
 CREATE TABLE "User" (
@@ -17,8 +15,8 @@ CREATE TABLE "User" (
     "accountType" TEXT NOT NULL,
     "displayName" TEXT NOT NULL,
     "countryCode" TEXT NOT NULL,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL
 );
 
 -- CreateIndex
