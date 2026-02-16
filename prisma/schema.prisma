@@ -4,8 +4,8 @@ generator client {
 }
 
 datasource db {
-  provider = "env(DATABASE_TYPE)"
-  url      = "env(DATABASE_URL)"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 // Account created via onboarding (create-account flow). Auth: password + session; API keys per plan.
