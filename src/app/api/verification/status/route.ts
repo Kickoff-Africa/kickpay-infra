@@ -17,6 +17,10 @@ export async function GET() {
           rejectionReason: string | null;
           submittedAt: string;
           reviewedAt: string | null;
+          bvn: string;
+          tin: string;
+          cacDocumentPath: string;
+          additionalPaths: string;
         }>
       >;
     };
@@ -36,19 +40,40 @@ export async function GET() {
       rejectionReason: true,
       submittedAt: true,
       reviewedAt: true,
+      bvn: true,
+      tin: true,
+      cacDocumentPath: true,
+      additionalPaths: true,
     },
   });
 
   const submission = list[0] ?? null;
+
+  const submissionPayload = submission
+    ? {
+        id: submission.id,
+        status: submission.status,
+        rejectionReason: submission.rejectionReason ?? undefined,
+        submittedAt: submission.submittedAt,
+        reviewedAt: submission.reviewedAt ?? undefined,
+        bvn: submission.bvn,
+        tin: submission.tin,
+        cacDocumentUrl: submission.cacDocumentPath,
+        additionalDocumentUrls: safeParseArray(submission.additionalPaths),
+      }
+    : null;
+
   return NextResponse.json({
-    submission: submission
-      ? {
-          id: submission.id,
-          status: submission.status,
-          rejectionReason: submission.rejectionReason ?? undefined,
-          submittedAt: submission.submittedAt,
-          reviewedAt: submission.reviewedAt ?? undefined,
-        }
-      : null,
+    submission: submissionPayload,
   });
+}
+
+function safeParseArray(value: string | null | undefined): string[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.filter((v) => typeof v === "string") : [];
+  } catch {
+    return [];
+  }
 }
