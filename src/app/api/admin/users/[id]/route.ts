@@ -5,6 +5,95 @@ import { toApiErrorResponse } from "@/lib/errors/api-error";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
+/** GET: Fetch one user with full profile and summary counts. Admin only. */
+export async function GET(request: NextRequest, context: RouteContext) {
+  const admin = await getAdminUser();
+  if (!admin) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const { id } = await context.params;
+
+  const client = prisma as unknown as {
+    user?: {
+      findUnique: (args: unknown) => Promise<{
+        id: string;
+        email: string;
+        displayName: string | null;
+        phone: string | null;
+        businessPhone: string | null;
+        countryCode: string | null;
+        defaultCurrency: string | null;
+        accountType: string;
+        accountStatus: string;
+        role: string;
+        testSecretPrefix: string | null;
+        liveSecretPrefix: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        _count?: { verificationSubmissions: number; recipients: number; transfers: number };
+      } | null>;
+    };
+  };
+
+  if (!client.user) {
+    return NextResponse.json({ error: "Service unavailable" }, { status: 503 });
+  }
+
+  const user = await client.user.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      email: true,
+      displayName: true,
+      phone: true,
+      businessPhone: true,
+      countryCode: true,
+      defaultCurrency: true,
+      accountType: true,
+      accountStatus: true,
+      role: true,
+      testSecretPrefix: true,
+      liveSecretPrefix: true,
+      createdAt: true,
+      updatedAt: true,
+      _count: {
+        select: {
+          verificationSubmissions: true,
+          recipients: true,
+          transfers: true,
+        },
+      },
+    },
+  });
+
+  if (!user) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  const count = (user as { _count?: { verificationSubmissions: number; recipients: number; transfers: number } })._count;
+
+  return NextResponse.json({
+    id: user.id,
+    email: user.email,
+    displayName: user.displayName ?? undefined,
+    phone: user.phone ?? undefined,
+    businessPhone: user.businessPhone ?? undefined,
+    countryCode: user.countryCode ?? undefined,
+    defaultCurrency: user.defaultCurrency ?? undefined,
+    accountType: user.accountType,
+    accountStatus: user.accountStatus,
+    role: user.role,
+    testSecretPrefix: user.testSecretPrefix ?? undefined,
+    liveSecretPrefix: user.liveSecretPrefix ?? undefined,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+    verificationSubmissionsCount: count?.verificationSubmissions ?? 0,
+    recipientsCount: count?.recipients ?? 0,
+    transfersCount: count?.transfers ?? 0,
+  });
+}
+
 /** PATCH: Update user (e.g. accountStatus for suspend/restore). Admin only. */
 export async function PATCH(request: NextRequest, context: RouteContext) {
   const admin = await getAdminUser();

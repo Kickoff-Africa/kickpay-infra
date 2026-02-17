@@ -15,6 +15,26 @@ type UserRow = {
 
 type Stats = { total: number; active: number; inactive: number };
 
+type FullUser = {
+  id: string;
+  email: string;
+  displayName?: string;
+  phone?: string;
+  businessPhone?: string;
+  countryCode?: string;
+  defaultCurrency?: string;
+  accountType: string;
+  accountStatus: string;
+  role: string;
+  testSecretPrefix?: string;
+  liveSecretPrefix?: string;
+  createdAt: string;
+  updatedAt: string;
+  verificationSubmissionsCount: number;
+  recipientsCount: number;
+  transfersCount: number;
+};
+
 export function UsersPageClient() {
   const [stats, setStats] = useState<Stats>({ total: 0, active: 0, inactive: 0 });
   const [users, setUsers] = useState<UserRow[]>([]);
@@ -22,6 +42,9 @@ export function UsersPageClient() {
   const [error, setError] = useState<string | null>(null);
   const [actioning, setActioning] = useState<string | null>(null);
   const [viewId, setViewId] = useState<string | null>(null);
+  const [viewUser, setViewUser] = useState<FullUser | null>(null);
+  const [viewLoading, setViewLoading] = useState(false);
+  const [viewError, setViewError] = useState<string | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
 
   function load() {
@@ -49,6 +72,39 @@ export function UsersPageClient() {
   }
 
   useEffect(() => load(), []);
+
+  function closeViewDrawer() {
+    setViewId(null);
+    setViewUser(null);
+    setViewError(null);
+  }
+
+  useEffect(() => {
+    if (!viewId) {
+      setViewUser(null);
+      setViewError(null);
+      return;
+    }
+    setViewLoading(true);
+    setViewError(null);
+    fetch(`/api/admin/users/${viewId}`, { credentials: "include" })
+      .then((res) => {
+        if (!res.ok) {
+          if (res.status === 404) throw new Error("User not found");
+          throw new Error("Failed to load user");
+        }
+        return res.json();
+      })
+      .then((data: FullUser) => {
+        setViewUser({
+          ...data,
+          createdAt: typeof data.createdAt === "string" ? data.createdAt : (data as unknown as { createdAt: Date }).createdAt?.toISOString?.() ?? "",
+          updatedAt: typeof data.updatedAt === "string" ? data.updatedAt : (data as unknown as { updatedAt: Date }).updatedAt?.toISOString?.() ?? "",
+        });
+      })
+      .catch((e) => setViewError(e instanceof Error ? e.message : "Failed to load user"))
+      .finally(() => setViewLoading(false));
+  }, [viewId]);
 
   async function updateStatus(id: string, accountStatus: string) {
     setActioning(id);
@@ -84,7 +140,7 @@ export function UsersPageClient() {
         const j = await res.json();
         throw new Error(j?.error ?? "Failed");
       }
-      setViewId(null);
+      closeViewDrawer();
       setEditId(null);
       load();
     } catch (e) {
@@ -102,7 +158,6 @@ export function UsersPageClient() {
     );
   }
 
-  const viewUser = viewId ? users.find((u) => u.id === viewId) : null;
   const editUser = editId ? users.find((u) => u.id === editId) : null;
 
   return (
@@ -246,26 +301,206 @@ export function UsersPageClient() {
         </CardContent>
       </Card>
 
-      {viewUser && (
-        <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-          onClick={() => setViewId(null)}
-        >
-          <Card className="max-w-md w-full" onClick={(e) => e.stopPropagation()}>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-base">User details</CardTitle>
-              <Button variant="ghost" className="h-8 w-8 p-0" onClick={() => setViewId(null)}>
-                ×
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              <p><span className="text-[var(--muted-foreground)]">Email:</span> {viewUser.email}</p>
-              <p><span className="text-[var(--muted-foreground)]">Name:</span> {viewUser.displayName ?? "—"}</p>
-              <p><span className="text-[var(--muted-foreground)]">Role:</span> {viewUser.role}</p>
-              <p><span className="text-[var(--muted-foreground)]">Status:</span> {viewUser.accountStatus}</p>
-              <p><span className="text-[var(--muted-foreground)]">Created:</span> {new Date(viewUser.createdAt).toLocaleString()}</p>
-            </CardContent>
-          </Card>
+      {/* Side drawer: view user details */}
+      {viewId && (
+        <div className="fixed inset-0 z-40 flex">
+          <div
+            className="flex-1 bg-black/40"
+            onClick={closeViewDrawer}
+            aria-hidden
+          />
+          <aside className="relative w-full max-w-md bg-card border-l border-border shadow-xl flex flex-col">
+            <header className="flex items-center justify-between border-b border-border px-5 py-4">
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-foreground">
+                  {viewUser?.displayName || viewUser?.email || "User details"}
+                </p>
+                {viewUser && (
+                  <p className="text-xs text-muted-foreground">{viewUser.email}</p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={closeViewDrawer}
+                className="text-xs text-muted-foreground hover:text-foreground"
+              >
+                Close
+              </button>
+            </header>
+
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5 text-sm">
+              {viewLoading && (
+                <p className="text-sm text-muted-foreground">Loading user…</p>
+              )}
+              {viewError && (
+                <p className="text-sm text-error">{viewError}</p>
+              )}
+
+              {viewUser && !viewLoading && !viewError && (
+                <>
+                  <section className="space-y-2">
+                    <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                      Profile
+                    </h2>
+                    <div className="grid gap-2">
+                      <div>
+                        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Email</p>
+                        <p className="font-medium">{viewUser.email}</p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Business name</p>
+                        <p>{viewUser.displayName ?? "—"}</p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Account type</p>
+                        <p className="capitalize">{viewUser.accountType}</p>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section className="space-y-2">
+                    <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                      Contact
+                    </h2>
+                    <div className="grid gap-2">
+                      <div>
+                        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Phone</p>
+                        <p>{viewUser.phone ?? "—"}</p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Business phone</p>
+                        <p>{viewUser.businessPhone ?? "—"}</p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Country</p>
+                        <p>{viewUser.countryCode ?? "—"}</p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Currency</p>
+                        <p>{viewUser.defaultCurrency ?? "—"}</p>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section className="space-y-2">
+                    <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                      Account
+                    </h2>
+                    <div className="grid gap-2">
+                      <div>
+                        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Status</p>
+                        <p>
+                          <span
+                            className={
+                              viewUser.accountStatus === "suspended"
+                                ? "text-red-600 dark:text-red-400"
+                                : viewUser.accountStatus === "verified"
+                                  ? "text-green-600 dark:text-green-400"
+                                  : ""
+                            }
+                          >
+                            {viewUser.accountStatus}
+                          </span>
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Role</p>
+                        <p className="capitalize">{viewUser.role.replace("_", " ")}</p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Created</p>
+                        <p>{new Date(viewUser.createdAt).toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Last updated</p>
+                        <p>{new Date(viewUser.updatedAt).toLocaleString()}</p>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section className="space-y-2">
+                    <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                      API keys
+                    </h2>
+                    <div className="grid gap-2">
+                      <div>
+                        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Test key</p>
+                        <p className="font-mono text-xs">{viewUser.testSecretPrefix ?? "—"}</p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Live key</p>
+                        <p className="font-mono text-xs">{viewUser.liveSecretPrefix ?? "—"}</p>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section className="space-y-2">
+                    <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                      Activity
+                    </h2>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="rounded-lg border border-border/80 bg-muted/30 px-3 py-2 text-center">
+                        <p className="text-lg font-semibold text-foreground">{viewUser.verificationSubmissionsCount}</p>
+                        <p className="text-[11px] text-muted-foreground">Verification submissions</p>
+                      </div>
+                      <div className="rounded-lg border border-border/80 bg-muted/30 px-3 py-2 text-center">
+                        <p className="text-lg font-semibold text-foreground">{viewUser.recipientsCount}</p>
+                        <p className="text-[11px] text-muted-foreground">Recipients</p>
+                      </div>
+                      <div className="rounded-lg border border-border/80 bg-muted/30 px-3 py-2 text-center">
+                        <p className="text-lg font-semibold text-foreground">{viewUser.transfersCount}</p>
+                        <p className="text-[11px] text-muted-foreground">Transfers</p>
+                      </div>
+                    </div>
+                  </section>
+
+                  <div className="flex flex-wrap gap-2 pt-2 border-t border-border">
+                    <Button
+                      variant="outline"
+                      // size="sm"
+                      onClick={() => {
+                        setEditId(viewUser.id);
+                        closeViewDrawer();
+                      }}
+                      disabled={actioning !== null}
+                    >
+                      Edit status
+                    </Button>
+                    {viewUser.accountStatus === "suspended" ? (
+                      <Button
+                        variant="outline"
+                        // size="sm"
+                        className="text-green-600"
+                        onClick={() => updateStatus(viewUser.id, "pending")}
+                        disabled={actioning !== null}
+                      >
+                        {actioning === viewUser.id ? "…" : "Activate"}
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        // size="sm"
+                        className="text-red-600"
+                        onClick={() => updateStatus(viewUser.id, "suspended")}
+                        disabled={actioning !== null}
+                      >
+                        {actioning === viewUser.id ? "…" : "Deactivate"}
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      //  size="sm"
+                      className="text-red-600"
+                      onClick={() => removeUser(viewUser.id)}
+                      disabled={actioning !== null}
+                    >
+                      {actioning === viewUser.id ? "…" : "Delete"}
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
+          </aside>
         </div>
       )}
 

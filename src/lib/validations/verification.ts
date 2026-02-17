@@ -16,6 +16,28 @@ export const tinSchema = z
 export const verificationSubmitSchema = z.object({
   bvn: bvnSchema,
   tin: tinSchema,
+  countryCode: z
+    .string()
+    .min(2, "Country is required")
+    .max(2, "Country code must be 2 letters")
+    .regex(/^[A-Za-z]{2}$/, "Use 2-letter country code, e.g. NG"),
+  currency: z
+    .string()
+    .min(1, "Currency is required")
+    .max(10, "Currency code is too long"),
+  businessName: z
+    .string()
+    .min(1, "Business name is required")
+    .max(200, "Business name is too long"),
+  phone: z
+    .string()
+    .min(5, "Phone number is required")
+    .max(30, "Phone number is too long"),
+  businessPhone: z
+    .string()
+    .max(30, "Business phone number is too long")
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
 });
 
 export type VerificationSubmitInput = z.infer<typeof verificationSubmitSchema>;
